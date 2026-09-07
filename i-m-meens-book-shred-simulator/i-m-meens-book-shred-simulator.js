@@ -9,6 +9,8 @@ const BOOK_IMAGES = [
   './assets/books/random-novel.png',
   './assets/books/childrens-encyclopedia.png',
   './assets/books/childrens-animal-book.png',
+  './assets/books/random-book.png',
+  './assets/books/newspapers.png',
 ];
 
 // ---- I.M. MEEN VOICE LINES HERE ----
@@ -45,7 +47,7 @@ const upgrades = {
     level: 0,
     maxLevel: 200,
     baseCost: 5,
-    costIncrement: 75,
+    costIncrement: 55,
     color: '#ff6b35',
     description: '+€0.50 per book',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -56,7 +58,7 @@ const upgrades = {
     level: 0,
     maxLevel: 100,
     baseCost: 25,
-    costIncrement: 225,
+    costIncrement: 170,
     color: '#4ecdc4',
     description: 'Books drop faster',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -67,7 +69,7 @@ const upgrades = {
     level: 0,
     maxLevel: 80,
     baseCost: 37,
-    costIncrement: 337,
+    costIncrement: 250,
     color: '#e8c000',
     description: 'Shredder munches faster',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -78,7 +80,7 @@ const upgrades = {
     level: 0,
     maxLevel: 60,
     baseCost: 50,
-    costIncrement: 450,
+    costIncrement: 340,
     color: '#a855f7',
     description: '+1 simultaneous book',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -322,6 +324,140 @@ function shredBook() {
   requestAnimationFrame(animate);
 }
 
+// =============================================
+// PAPER SCRAP PARTICLE SYSTEM
+// =============================================
+
+// Scrap shapes: tiny torn rectangles, strips, triangles rendered as SVGs
+const SCRAP_COLORS = [
+  '#f5e6c8', '#fef9e7', '#eaf2ff', '#eafaf1', '#fdf3e3', // page colours
+  '#ffffff', '#f0f0e8', '#fffde0',                         // white/cream
+  '#c8ddf5', '#f5c8c8',                                    // light tints
+];
+
+function randomScrapSVG(color) {
+  const type = Math.floor(Math.random() * 3);
+  const w = 6 + Math.random() * 14;  // 6–20px wide
+  const h = 3 + Math.random() * 10;  // 3–13px tall
+  const lineColor = 'rgba(100,100,120,0.35)';
+
+  if (type === 0) {
+    // Torn rectangle with optional ruled line
+    const hasLine = Math.random() > 0.5;
+    const lineY = h * 0.5;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+      <rect x="0" y="0" width="${w}" height="${h}" rx="1" fill="${color}" stroke="rgba(0,0,0,0.12)" stroke-width="0.5"/>
+      ${hasLine ? `<line x1="1" y1="${lineY}" x2="${w - 1}" y2="${lineY}" stroke="${lineColor}" stroke-width="0.7"/>` : ''}
+    </svg>`;
+  } else if (type === 1) {
+    // Thin strip
+    const sw = 3 + Math.random() * 5;
+    const sh = 10 + Math.random() * 18;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${sw}" height="${sh}" viewBox="0 0 ${sw} ${sh}">
+      <rect x="0" y="0" width="${sw}" height="${sh}" rx="1" fill="${color}" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+    </svg>`;
+  } else {
+    // Triangle scrap
+    const tw = 6 + Math.random() * 12;
+    const th = 5 + Math.random() * 10;
+    const points = `${tw / 2},0 ${tw},${th} 0,${th}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${tw}" height="${th}" viewBox="0 0 ${tw} ${th}">
+      <polygon points="${points}" fill="${color}" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+    </svg>`;
+  }
+}
+
+function spawnScrapParticle(originX, originY, gameArea) {
+  const el = document.createElement('div');
+  el.style.position = 'absolute';
+  el.style.pointerEvents = 'none';
+  el.style.zIndex = '12'; // above shredder overlay
+
+  const color = SCRAP_COLORS[Math.floor(Math.random() * SCRAP_COLORS.length)];
+  el.innerHTML = randomScrapSVG(color);
+
+  // Start position: near the shredder slot mouth, randomised horizontally
+  const spawnX = originX + (Math.random() - 0.5) * 60;
+  const spawnY = originY;
+  el.style.left = spawnX + 'px';
+  el.style.top = spawnY + 'px';
+
+  gameArea.appendChild(el);
+
+  // Physics params — all floats, no pixel snapping
+  // Burst upward with strong spread so scraps erupt out of the hopper opening
+  const speed = 4 + Math.random() * 6;                  // initial speed px/frame (boosted)
+  let vx = (Math.random() - 0.5) * speed * 1.4;         // wide horizontal spread
+  let vy = -(speed * (0.7 + Math.random() * 0.5));       // strong upward kick
+
+  const gravity = 0.12 + Math.random() * 0.08;          // px/frame²
+  const drag = 0.985 + Math.random() * 0.01;            // velocity multiplier per frame
+  let rotAngle = Math.random() * 360;
+  const rotSpeed = (Math.random() - 0.5) * 6;           // deg/frame — twirl!
+  const totalLife = 90 + Math.random() * 70;            // frames (~1.5–2.7s at 60fps)
+  const fadeStartFrac = 0.55;                            // start fading at 55% of life
+
+  let frame = 0;
+  let x = spawnX;
+  let y = spawnY;
+
+  function tick() {
+    frame++;
+    if (frame > totalLife) {
+      el.remove();
+      return;
+    }
+
+    // Apply physics
+    vy += gravity;
+    vx *= drag;
+    vy *= drag;
+    x += vx;
+    y += vy;
+    rotAngle += rotSpeed;
+
+    // Opacity: full until fadeStartFrac, then linear fade to 0
+    let opacity = 1;
+    const lifeFrac = frame / totalLife;
+    if (lifeFrac > fadeStartFrac) {
+      opacity = 1 - (lifeFrac - fadeStartFrac) / (1 - fadeStartFrac);
+    }
+
+    el.style.transform = `rotate(${rotAngle}deg)`;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.opacity = opacity;
+
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+}
+
+function startScrapEmitter(originX, originY, shredDuration, gameArea) {
+  // Emission rate scales with shred speed: faster shred = more particles per interval
+  // Base: ~1 particle per 80ms. At max speed (shredDuration ~400ms), ~1 per 30ms.
+  const BASE_SHRED_MS = 800;
+  const speedRatio = BASE_SHRED_MS / Math.max(shredDuration, 400); // 1x–2x
+  const intervalMs = Math.round(80 / speedRatio); // 80ms → ~40ms at max speed
+  const burstCount = Math.ceil(1 + speedRatio);   // 2–3 particles per interval
+
+  let active = true;
+
+  function emit() {
+    if (!active) return;
+    for (let i = 0; i < burstCount; i++) {
+      spawnScrapParticle(originX, originY, gameArea);
+    }
+    setTimeout(emit, intervalMs);
+  }
+
+  emit();
+
+  // Return a stop handle
+  return () => { active = false; };
+}
+
 function slideIntoShredder(book, job, slotTopY, duration) {
   const gameArea = document.getElementById('game-area');
   const shredder = document.getElementById('shredder-img');
@@ -340,6 +476,16 @@ function slideIntoShredder(book, job, slotTopY, duration) {
 
   // Play the shred sound, sped up to match shredDuration
   playShredSound(shredDuration);
+
+  // ---- PAPER SCRAP EMITTER ----
+  // Origin: top of shredder input slot in game-area coords
+  // slotX at ~68.7% of shredder width (matches createBookElement)
+  const slotEmitX = shredderRect.left - gameRect.left + shredderRect.width * 0.687;
+  // Spawn at the very top rim of the shredder image — the hopper opening is flush
+  // with the top edge of the rendered element (bottom:0 positioned image).
+  // Use 2% so particles erupt right from the opening lip.
+  const slotEmitY = shredderRect.top - gameRect.top + shredderRect.height * 0.02;
+  const stopScraps = startScrapEmitter(slotEmitX, slotEmitY, shredDuration, gameArea);
 
   function animateShred(now) {
     if (job.done) return; // guard: stop if another job cancelled this
@@ -367,6 +513,7 @@ function slideIntoShredder(book, job, slotTopY, duration) {
       book.remove();
       shredder.style.transform = '';
       job.done = true;
+      stopScraps(); // stop emitting new particles
 
       // Earn money!
       money += upgrades.value.getEffect();
