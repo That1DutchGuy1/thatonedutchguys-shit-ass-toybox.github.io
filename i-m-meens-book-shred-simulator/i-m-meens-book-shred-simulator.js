@@ -43,9 +43,9 @@ const upgrades = {
   value: {
     label: 'Value',
     level: 0,
-    maxLevel: 50,
-    baseCost: 10,
-    costIncrement: 100,
+    maxLevel: 200,
+    baseCost: 5,
+    costIncrement: 75,
     color: '#ff6b35',
     description: '+€0.50 per book',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -54,9 +54,9 @@ const upgrades = {
   speed: {
     label: 'Drop Speed',
     level: 0,
-    maxLevel: 25,
-    baseCost: 50,
-    costIncrement: 300,
+    maxLevel: 100,
+    baseCost: 25,
+    costIncrement: 225,
     color: '#4ecdc4',
     description: 'Books drop faster',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -65,9 +65,9 @@ const upgrades = {
   shredSpeed: {
     label: 'Shredder Speed',
     level: 0,
-    maxLevel: 20,
-    baseCost: 75,
-    costIncrement: 450,
+    maxLevel: 80,
+    baseCost: 37,
+    costIncrement: 337,
     color: '#e8c000',
     description: 'Shredder munches faster',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -76,9 +76,9 @@ const upgrades = {
   quantity: {
     label: 'Shred Quantity',
     level: 0,
-    maxLevel: 15,
-    baseCost: 100,
-    costIncrement: 600,
+    maxLevel: 60,
+    baseCost: 50,
+    costIncrement: 450,
     color: '#a855f7',
     description: '+1 simultaneous book',
     getCost() { return this.baseCost + this.level * this.costIncrement; },
@@ -101,6 +101,7 @@ function repositionMoneyCounter() {
   const panel = document.getElementById('upgrade-panel');
   const counter = document.getElementById('money-counter');
   const hubBtn = document.getElementById('hub-btn');
+  const resetBtn = document.getElementById('reset-btn');
   if (!panel || !counter) return;
   const panelRect = panel.getBoundingClientRect();
   counter.style.top = (panelRect.bottom + 14) + 'px';
@@ -108,6 +109,26 @@ function repositionMoneyCounter() {
     const counterRect = counter.getBoundingClientRect();
     hubBtn.style.top = (counterRect.bottom + 12) + 'px';
   }
+  if (resetBtn && hubBtn) {
+    const hubRect = hubBtn.getBoundingClientRect();
+    resetBtn.style.top = (hubRect.bottom + 8) + 'px';
+  }
+}
+
+function resetProgress() {
+  const confirmed = window.confirm('⚠️ ARE YOU SURE?! This will wipe ALL your money and upgrades! Even Meen thinks this is a bad idea... 😱');
+  if (!confirmed) return;
+  money = 0;
+  for (const upg of Object.values(upgrades)) {
+    upg.level = 0;
+  }
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch(e) {
+    console.warn('Reset clear failed:', e);
+  }
+  updateMoneyDisplay();
+  updateUpgradeButtons();
 }
 
 const SAVE_KEY = 'immeen_save';
@@ -494,6 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
   requestAnimationFrame(repositionMoneyCounter);
 
   document.getElementById('shred-btn').addEventListener('click', shredBook);
+  document.getElementById('reset-btn').addEventListener('click', resetProgress);
 
   // Wire upgrade buttons
   for (const key of Object.keys(upgrades)) {

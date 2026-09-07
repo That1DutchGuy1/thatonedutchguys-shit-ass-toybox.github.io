@@ -267,6 +267,35 @@ html, body {
   transform: scale(0.97);
 }
 
+/* ---- RESET BUTTON ---- */
+#reset-btn {
+  position: absolute;
+  left: 18px;
+  z-index: 20;
+  font-family: 'ComicSans', 'Comic Sans MS', cursive;
+  font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+  font-weight: bold;
+  color: #fff;
+  background: #8b0000;
+  border: 3px solid #000;
+  border-radius: 10px;
+  padding: 6px 14px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  transition: transform 0.1s, filter 0.1s;
+  white-space: nowrap;
+  /* Positioned dynamically by JS below the hub button */
+}
+
+#reset-btn:hover {
+  transform: scale(1.05) translateY(-1px);
+  filter: brightness(1.2);
+}
+
+#reset-btn:active {
+  transform: scale(0.97);
+}
+
 /* ---- FALLING BOOKS ---- */
 .falling-book {
   position: absolute;

@@ -84,6 +84,7 @@
 * Help Ignatius Mortimer Meen destroy a bunch of books, including the Bible, in his brand new hyper modern industrial shredder! 📔
 * Click the fucking button to shred those goodie-goodie books! 😈
 * Earn € for shredding books and buy upgrades! 💶
+* Buy upgrades to earn more money, upgrade the shredder, or increase the book capacity of it! 🔺
 * Click till you die of old age! OR ELSE! 🔫
 
 ---
